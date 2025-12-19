@@ -1,0 +1,1747 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Room Manager - Soft Deep Blue</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js"></script>
+    <style>
+        /* 文字色と基本ウェイトの強化 */
+        :root {
+            --bg-color: #050708;
+            --bg-gradient-top: #16181f;
+            /* ★追加: グラデーション上部の色 */
+            /* 背景をより深くしてコントラストを確保 */
+            --text-main: #ffffff;
+            /* 純粋な白に変更 */
+            --text-sub: #cbd5e1;
+            /* グレーを明るく */
+            /* メインコンテンツの最大横幅 */
+            --content-max-width: 1700px;
+            --date-header-height: 22px;
+            /* 14px(文字) + 8px(余白) */
+        }
+
+        body {
+            /* ベース（ダークモード）の背景 */
+            background: radial-gradient(circle at 50% 0%, #16181f 0%, #050708 100%);
+            color: var(--text-main);
+            font-family: 'Noto Sans JP', sans-serif;
+            position: relative;
+            /* 擬似要素のために必要 */
+            isolation: isolate;
+            /* 重ね合わせコンテキストを生成 */
+        }
+
+        /* ★追加: ライトモード用の背景レイヤー（透明度でアニメーションさせる） */
+        body::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            /* top, right, bottom, left: 0 と同じ */
+            background: radial-gradient(circle at 50% 0%, #def0eb 0%, #f4fbff 100%);
+            /* ライトモードの色 */
+            z-index: -1;
+            /* コンテンツの後ろに配置 */
+            opacity: 0;
+            /* 最初は隠しておく */
+            transition: opacity 0.5s ease;
+            /* 透明度をなめらかに変化 */
+            pointer-events: none;
+            /* クリックを邪魔しないように */
+        }
+
+        /* ライトモード時はこのレイヤーを表示する */
+        body.light-mode::before {
+            opacity: 1;
+        }
+
+        /* ★重要: 背景の上にコンテンツが来るように順序を指定 */
+        aside,
+        main {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* フッターの固定：メインコンテンツより上に表示 */
+        footer {
+            position: sticky;
+            bottom: 0;
+            width: 100%;
+            z-index: 50;
+            /* メインコンテンツより上に来るように */
+            background: rgba(10, 12, 18, 0.9);
+            /* 背後が透けないよう濃いめに */
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* ガラスモーフィズムの強化 */
+        .glass-panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6);
+        }
+
+        .step-item {
+            cursor: pointer;
+            border-left: 3px solid transparent;
+            color: var(--text-sub);
+            transition: all 0.3s ease;
+        }
+
+        .step-item:hover {
+            background: rgba(255, 255, 255, 0.02);
+            color: white;
+        }
+
+        .step-item.active {
+            background: rgba(255, 255, 255, 0.06);
+            border-left: 3px solid #a0a8b3;
+            color: white;
+        }
+
+        /* カスタムスクロールバー */
+        .custom-scroll::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        /* 1. ページ全体のメインコンテナの制限を完全に解除 */
+        .container {
+            width: 100% !important;
+            /* 幅を100%に */
+            max-width: none !important;
+            /* 最大幅の制限（1280px等）を撤廃 */
+            margin: 0 !important;
+            /* 外側のマージンをゼロに */
+            /* 左右に5%の余白を確保 */
+            padding-left: 5% !important;
+            padding-right: 5% !important;
+        }
+
+        /* メインスクロールエリア */
+        .u-main-content {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            padding-bottom: 2rem;
+        }
+
+        /* 【重要】設定画面の最大幅を制限するコンテナ */
+        .u-settings-container {
+            width: 90%;
+            max-width: var(--content-max-width);
+            height: 100%;
+            margin: 0 auto;
+            padding: 2.5rem 0;
+        }
+
+        /* プレビューの外枠：中央揃えを強制 */
+        .preview-window {
+            width: 100%;
+            display: flex;
+            justify-content: flex-start;
+            /* 上詰め */
+            align-items: flex-start;
+            /* 横中央 */
+            border-radius: 2rem;
+            padding: 40px;
+            /* このパディングを JS が尊重するようにします */
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* プレビュー台紙：1600px固定 */
+        #capture-area {
+            width: 1600px !important;
+            transform-origin: top left;
+            /* 起点を「上中央」に完全固定 */
+            transition: background-color 0.5s ease;
+            flex-shrink: 0;
+            margin: 0 !important;
+            /* 負のマージンを廃止 */
+        }
+
+        /* 色変更時のアニメーション（!importantを外してJSから制御可能に） */
+        #export-calendar .day-cell {
+            transition: background-color 0.5s ease, border-color 0.5s ease;
+            backdrop-filter: blur(16px);
+            padding: 15px;
+            border-width: 1px;
+            border-style: solid;
+            border-radius: 10px !important;
+        }
+
+        #export-calendar .stack>div {
+            transition: background-color 0.5s ease, color 0.5s ease, border-color 0.5s ease;
+        }
+
+        /* カレンダーセルとスロットにもトランジションを追加 */
+        #export-calendar .day-cell,
+        #capture-message-display {
+            transition: background-color 0.5s ease, color 0.5s ease, border-color 0.5s ease, box-shadow 0.5s ease;
+            background: rgba(255, 255, 255, 0.04);
+            /* glass-panelと同じ透過度 */
+            backdrop-filter: blur(16px);
+            /* 磨りガラス効果 */
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3) !important;
+            /* 深い影 */
+            border-radius: 1rem !important;
+            /* パネルと同じ大きな角丸 */
+            padding: 15px !important;
+        }
+
+        #export-calendar>div.day-cell {
+            /* 背景色はJSから動的に流し込むので、ここでは共通の形状のみ定義 */
+            min-height: 170px !important;
+            backdrop-filter: blur(16px) !important;
+            -webkit-backdrop-filter: blur(16px) !important;
+            border-radius: 10px !important;
+            padding: 15px !important;
+            box-shadow: 0 8px 12px 0 rgba(0, 0, 0, 0.3) !important;
+            border-width: 1px !important;
+            border-style: solid !important;
+        }
+
+        /* 曜日ヘッダーの文字をよりはっきりと */
+        .day-header {
+            font-size: 12px !important;
+            letter-spacing: 0.1em;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+
+        .empty-cell {
+            background: none !important;
+            border: none !important;
+            min-height: auto !important;
+        }
+
+        /* カレンダー内の4つのスロット枠を個別に強調 */
+        #result-calendar .stack>div,
+        #export-calendar .stack>div {
+            height: 44px !important;
+            /* 34pxから44pxにアップ */
+            /* 少し高さを出す */
+            margin-bottom: 4px !important;
+            border-radius: 10px !important;
+            /* 角丸をパネルに合わせる */
+            gap: 4px !important;
+            border: 2px solid transparent;
+            /* デフォルトは透明に */
+            /* 横の広がりを強調するために間隔を広げる */
+            /* 枠線を太く強調 */
+            border-style: solid !important;
+            font-size: 18px !important;
+            font-weight: 900 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            transition: all 0.2s ease;
+            /* ガラスのような質感を出すための設定 */
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            white-space: nowrap;
+            /* 折り返さない */
+            overflow: hidden;
+            /* はみ出しを隠す */
+            text-overflow: ellipsis;
+            /* はみ出したら "..." にする */
+            padding: 0 4px !important;
+            /* 文字が枠ギリギリにならないよう余白 */
+            display: block !important;
+            /* flexだとellipsisが効きにくいのでblockにする */
+            line-height: 40px !important;
+            /* 高さ44px - 枠線分で中央寄せに見せる */
+            text-align: center;
+            /* 文字を中央揃え */
+        }
+
+        /* 時間軸のスタイル調整 */
+        .time-axis-column div {
+            line-height: 1.2;
+            padding: 4px 0;
+        }
+
+        /* 時間軸のコンテナ構造を日付セルに完全同期 */
+        .time-axis-label {
+            display: flex;
+            flex-direction: column;
+            padding: 15px 0 !important;
+            /* 日付セルのpaddingと一致 */
+            margin: 0 !important;
+        }
+
+        .time-axis-header-gap {
+            height: var(--date-header-height) !important;
+        }
+
+        .time-axis-unit {
+            height: var(--slot-height) !important;
+            margin-bottom: var(--slot-gap) !important;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            line-height: 1.1;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .day-cell {
+            padding: 15px !important;
+            display: flex;
+            flex-direction: column;
+            min-height: auto !important;
+            /* 170px固定を解除 */
+            background: rgba(255, 255, 255, 0.01);
+            /* glass-panelと同じ透過度 */
+            backdrop-filter: blur(16px);
+            /* 磨りガラス効果 */
+            box-shadow: 0 8px 12px 0 rgba(0, 0, 0, 0.3) !important;
+            /* 深い影 */
+            border-radius: 1rem !important;
+            /* パネルと同じ大きな角丸 */
+            padding: 15px !important;
+        }
+
+
+        /* 各スロットの高さと間隔を厳密に固定 */
+        .time-axis-unit,
+        .stack>div {
+            height: 44px !important;
+            margin-bottom: 4px !important;
+            box-sizing: border-box;
+        }
+
+        /* 最後の枠だけ下の余白を消す */
+        .time-axis-unit:last-child,
+        .stack>div:last-child {
+            margin-bottom: 0 !important;
+        }
+
+        /* 時間軸のテキスト調整 */
+        .time-axis-unit {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 11px;
+            line-height: 1;
+        }
+
+        /* 最後のユニットだけマージンを消してズレを防止 */
+        .time-axis-unit:last-child {
+            margin-bottom: 0 !important;
+        }
+
+        /* 空白スロット（-）専用の強調スタイル */
+        .slot-empty {
+            background: rgba(255, 255, 255, 0.03) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05);
+        }
+
+        /* 日付の数字を大きく強調 */
+        .day-number-text {
+            font-size: 14px !important;
+            font-weight: 800 !important;
+            margin-bottom: 8px !important;
+            opacity: 1 !important;
+            /* 透過を解除 */
+        }
+
+        body.light-mode {
+            --bg-color: #f1f5f9;
+            /* Slate-100 */
+            --bg-gradient-top: #e2fff5;
+            /* Slate-200 */
+            --text-main: #0f2a28;
+            /* Slate-900 */
+            --text-sub: #476969;
+            /* Slate-600 */
+        }
+
+        /* ライトモード時、既存のTailwindクラスの意味を反転させる強制ルール */
+        body.light-mode .bg-white\/5 {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+
+        body.light-mode .bg-white\/10 {
+            background-color: rgba(0, 0, 0, 0.08);
+        }
+
+        body.light-mode .bg-white\/20 {
+            background-color: rgba(0, 0, 0, 0.15);
+        }
+
+        body.light-mode .border-white\/5 {
+            border-color: rgba(0, 0, 0, 0.08);
+        }
+
+        body.light-mode .border-white\/10 {
+            border-color: rgba(0, 0, 0, 0.15);
+        }
+
+        body.light-mode .border-white\/20 {
+            border-color: rgba(0, 0, 0, 0.25);
+        }
+
+        body.light-mode .text-white {
+            color: #07201c;
+        }
+
+        body.light-mode .text-slate-300 {
+            color: #116e8a;
+        }
+
+        body.light-mode .text-slate-400 {
+            color: #476469;
+        }
+
+        body.light-mode .text-slate-500 {
+            color: #2a5349;
+        }
+
+        /* ガラスパネルの調整 */
+        body.light-mode .glass-panel,
+        body.light-mode aside,
+        body.light-mode header,
+        body.light-mode footer {
+            background: rgba(255, 255, 255, 0.7);
+            /* 白っぽく透過 */
+            border-color: rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 32px rgba(0, 0, 0, 0.05);
+        }
+
+
+
+        /* 選択状態などの微調整 */
+        body.light-mode .step-item.active {
+            background: rgba(15, 36, 39, 0.06);
+            border-left: 3px solid #a0b3af;
+            color: #0f292a;
+        }
+
+        body.light-mode .step-item:hover {
+            background: rgba(255, 255, 255, 0.02);
+            color: black;
+        }
+
+        /* 「希望選択中」などの真っ白な強調(bg-white)を、ライトモードでは「濃い色」に反転 */
+        body.light-mode .bg-white {
+            background-color: #335552 !important;
+            /* 濃いスレート色 */
+            color: #ffffff !important;
+            /* 文字は白にする */
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+            /* 影をつけて浮かせる */
+        }
+
+        /* 上記の反転に伴い、中にある「黒文字(text-black)」を白に強制変更 */
+        body.light-mode .bg-white .text-black {
+            color: #ffffff !important;
+        }
+
+        /* 第2・第3希望（薄い白背景）を、少し濃いグレーにして見えるようにする */
+        body.light-mode .bg-white\/10 {
+            background-color: rgba(0, 0, 0, 0.08) !important;
+            color: #1e343b !important;
+            /* 文字を濃く */
+            border-color: rgba(0, 0, 0, 0.2) !important;
+        }
+
+        /* ホバー時の「白っぽくなる」効果を、「黒っぽくなる」効果に変更 */
+        body.light-mode .hover\:bg-white\/10:hover {
+            background-color: rgba(0, 0, 0, 0.08) !important;
+        }
+
+        body.light-mode .hover\:bg-white\/20:hover {
+            background-color: rgba(0, 0, 0, 0.15) !important;
+        }
+
+        /* 破線枠（枠を選択してくださいエリア）の線を濃くする */
+        body.light-mode .border-dashed {
+            border-color: rgba(0, 0, 0, 0.3) !important;
+            color: #476958 !important;
+        }
+
+        /* テキスト入力欄の背景を見やすく */
+        body.light-mode input[type="text"],
+        body.light-mode input[type="number"],
+        body.light-mode select {
+            background-color: rgba(255, 255, 255, 0.8) !important;
+            border-color: rgba(0, 0, 0, 0.2) !important;
+            color: #0f172a !important;
+        }
+
+        /* 終了時刻などの透過文字 (text-white/70) を薄い黒にする */
+        body.light-mode .text-white\/70 {
+            color: rgba(15, 23, 42, 0.6) !important;
+        }
+
+        /* 時間軸の区切り線 (border-white/20) を薄い黒にする */
+        body.light-mode .border-white\/20 {
+            border-color: rgba(15, 23, 42, 0.2) !important;
+        }
+
+        .glass-panel,
+        aside,
+        header,
+        footer,
+        input,
+        select,
+        button,
+        .step-item,
+        .day-cell,
+        .stack>div,
+        .time-axis-unit,
+        #step-counter,
+        h1,
+        h2,
+        h3,
+        h4,
+        span,
+        div {
+            transition: background-color 0.5s ease,
+                border-color 0.5s ease,
+                color 0.5s ease,
+                box-shadow 0.5s ease;
+        }
+    </style>
+</head>
+
+<body class="h-screen flex overflow-hidden">
+
+    <aside class="w-64 border-r border-white/5 flex flex-col p-6 bg-black/20 backdrop-blur-xl">
+        <div class="mb-12 px-2">
+            <h1 class="text-xl font-bold tracking-tight opacity-80">ROOM<span
+                    class="font-light text-slate-500">OS</span></h1>
+        </div>
+
+        <nav class="flex-1 space-y-1 text-sm font-medium">
+            <div onclick="goToStep(1)" id="side-1" class="step-item active p-4 rounded-r-xl">使用者登録</div>
+            <div onclick="goToStep(2)" id="side-2" class="step-item p-4 rounded-r-xl">枠の無効化</div>
+            <div onclick="goToStep(3)" id="side-3" class="step-item p-4 rounded-r-xl">希望の入力</div>
+            <div onclick="goToStep(4)" id="side-4" class="step-item p-4 rounded-r-xl">スケジュール決定</div>
+            <div onclick="goToStep(5)" id="side-5" class="step-item p-4 rounded-r-xl">画像として保存</div>
+        </nav>
+    </aside>
+
+    <main class="flex-1 flex flex-col relative overflow-hidden">
+
+        <header
+            class="h-16 border-b border-white/5 flex items-center justify-between px-10 bg-black/10 backdrop-blur-md">
+            <h2 id="current-step-name" class="text-sm font-bold tracking-widest text-slate-300">使用者登録</h2>
+            <div id="step-counter" class="text-[10px] font-mono text-slate-500 bg-white/5 px-3 py-1 rounded-full">STEP
+                01 / 05</div>
+        </header>
+
+        <div class="u-main-content custom-scroll">
+            <div id="settings-view" class="u-settings-container">
+
+                <section id="step1" class="space-y-6">
+                    <div class="glass-panel p-10 rounded-[2rem]">
+                        <h3 class="text-lg font-bold mb-6 opacity-90">利用メンバーの追加</h3>
+                        <div class="flex gap-3">
+                            <input type="text" id="user-input" placeholder="名前を入力してください"
+                                class="flex-1 bg-white/5 border border-white/10 rounded-xl px-5 py-3 outline-none focus:border-slate-500 transition-all text-sm">
+                            <button onclick="addUser()"
+                                class="bg-slate-200 text-slate-900 font-bold px-8 rounded-xl hover:bg-white transition-all text-sm">追加</button>
+                        </div>
+                    </div>
+
+                    <div id="user-list" class="flex flex-wrap gap-2"></div>
+                </section>
+
+                <section id="step2" class="hidden space-y-6">
+                    <div id="time-setting-panel" class="glass-panel p-6 rounded-[2rem] mt-6">
+                        <h3 class="text-[20px] font-mono mb-4 opacity-80 border-b border-white/10 pb-2">Time Slot
+                            Settings</h3>
+                        <div class="grid grid-cols-2 gap-8">
+                            <div class="space-y-3">
+                                <h4 class="text-[12px] font-mono text-slate-400 uppercase tracking-widest">Weekdays
+                                    (MON-FRI)</h4>
+                                <div id="weekday-times" class="space-y-2">
+                                </div>
+                            </div>
+                            <div class="space-y-3">
+                                <h4 class="text-[12px] font-mono text-slate-400 uppercase tracking-widest">Weekend
+                                    (SAT-SUN)</h4>
+                                <div id="weekend-times" class="space-y-2">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="selection-mode-header"
+                        class="hidden glass-panel border-white/20 p-4 rounded-2xl bg-white/10 flex justify-between items-center animate-pulse">
+                        <div class="flex items-center gap-3">
+                            <span class="w-2 h-2 rounded-full bg-white"></span>
+                            <span id="mode-text" class="text-sm font-bold text-white italic"></span>
+                        </div>
+                        <span class="text-[10px] font-mono opacity-60 uppercase tracking-widest">Selection Mode</span>
+                    </div>
+
+                    <div class="glass-panel p-6 rounded-[2rem]">
+                        <div class="flex justify-between items-center mb-6 px-2">
+                            <p id="step2-instruction" class="text-xs text-slate-400">除外したい枠を選択してください</p>
+                            <input type="month" id="month-select"
+                                class="bg-white/5 border border-white/10 p-2 rounded-lg text-xs"
+                                onchange="generateCalendar()">
+                        </div>
+
+                        <div id="calendar-grid" class="grid grid-cols-7 gap-1">
+                        </div>
+
+                        <div id="selection-footer" class="hidden mt-6 pt-6 border-t border-white/10">
+                            <button onclick="finishSelecting()"
+                                class="w-full bg-white text-black py-4 rounded-xl font-black text-sm tracking-widest hover:bg-slate-200 transition-all shadow-2xl">
+                                選択を確定して希望入力に戻る
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="step3" class="hidden space-y-6">
+                    <div class="grid grid-cols-12 gap-6">
+                        <div class="col-span-4 glass-panel rounded-[2rem] p-6">
+                            <h3 class="text-sm font-bold mb-4 opacity-80 border-b border-white/10 pb-2">メンバーを選択</h3>
+                            <div id="pref-user-list" class="space-y-2">
+                            </div>
+                        </div>
+
+                        <div class="col-span-8 glass-panel rounded-[2rem] p-8">
+                            <div id="pref-selection-area" class="hidden">
+                                <div class="flex justify-between items-center mb-6">
+                                    <h3 id="target-user-name" class="text-lg font-bold text-white">---</h3>
+                                    <span
+                                        class="text-[10px] font-mono text-slate-500 bg-white/5 px-3 py-1 rounded-full uppercase tracking-widest">Priority
+                                        Setting</span>
+                                </div>
+
+                                <div class="space-y-8">
+                                    <div>
+                                        <label
+                                            class="text-[10px] font-bold text-slate-500 mb-3 block italic">第1希望</label>
+                                        <div id="pref-1-display" onclick="startSelecting(1)"
+                                            class="glass-panel p-4 rounded-xl border-dashed border-white/20 text-center text-xs text-slate-400 cursor-pointer hover:bg-white/5 transition-all">
+                                            枠を選択してください
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label
+                                            class="text-[10px] font-bold text-slate-500 mb-3 block italic">第2希望</label>
+                                        <div id="pref-2-display" onclick="startSelecting(2)"
+                                            class="glass-panel p-4 rounded-xl border-dashed border-white/20 text-center text-xs text-slate-400 cursor-pointer hover:bg-white/5 transition-all">
+                                            枠を選択してください
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label
+                                            class="text-[10px] font-bold text-slate-500 mb-3 block italic">第3希望</label>
+                                        <div id="pref-3-display" onclick="startSelecting(3)"
+                                            class="glass-panel p-4 rounded-xl border-dashed border-white/20 text-center text-xs text-slate-400 cursor-pointer hover:bg-white/5 transition-all">
+                                            枠を選択してください
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <p class="mt-8 text-[9px] text-slate-500 leading-relaxed">
+                                    ※ カレンダー上の有効な枠から選択してください。<br>
+                                    ※ 他のメンバーと希望が重複しても、現時点では入力可能です。
+                                </p>
+                            </div>
+
+                            <div id="pref-placeholder"
+                                class="h-full flex items-center justify-center text-slate-600 text-sm italic">
+                                左のリストからメンバーを選択して希望を入力してください
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                <section id="step4" class="hidden space-y-6">
+                    <div class="grid grid-cols-12 gap-6">
+                        <div class="col-span-4 space-y-4">
+                            <div class="glass-panel p-6 rounded-[2rem]">
+                                <h3 class="text-sm font-bold mb-4 opacity-80 border-b border-white/10 pb-2">
+                                    抽選アルゴリズム設定
+                                </h3>
+                                <div class="space-y-4">
+                                    <div>
+                                        <label
+                                            class="text-[12px] font-mono text-slate-500 block mb-2 uppercase tracking-widest">Mode
+                                            Selection</label>
+                                        <select id="calc-mode"
+                                            class="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-xs text-white outline-none focus:border-white/30">
+                                            <option value="fair" class="bg-slate-900">公平モード（枠が少ない人を優先）</option>
+                                            <option value="priority" class="bg-slate-900">優先モード（優先度のみ重視）</option>
+                                        </select>
+                                    </div>
+
+                                    <div id="priority-settings" class="space-y-2 pt-2">
+                                    </div>
+
+                                    <button onclick="calculateSchedule()"
+                                        class="w-full mt-4 py-4 bg-white text-black font-black rounded-xl shadow-xl text-[10px] tracking-widest hover:bg-slate-200 transition-all uppercase">
+                                        Calculate Schedule
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-span-8 glass-panel rounded-[2rem] p-8 min-h-[500px]">
+                            <h3 class="text-[20px] font-mono mb-6 opacity-80 border-b border-white/10 pb-2">
+                                Result
+                                Schedule</h3>
+                            <div id="result-calendar" class="grid grid-cols-7 gap-1">
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                <section id="step5" class="hidden space-y-6">
+                    <div class="glass-panel p-8 rounded-[2rem]">
+                        <h3 class="text-[20px] font-mono mb-6 opacity-80 border-b border-white/10 pb-2">Design
+                            Editor
+                            & Settings</h3>
+                        <div class="grid grid-cols-4 gap-6">
+                            <div>
+                                <label
+                                    class="text-[12px] font-mono text-slate-500 block mb-1 uppercase tracking-widest">Background</label>
+                                <input type="color" id="color-bg" value="#FFFFFF" onchange="applyColors()"
+                                    class="w-full h-10 bg-transparent cursor-pointer">
+                            </div>
+                            <div>
+                                <label class="text-[12px] font-mono text-slate-500 block mb-1 uppercase tracking-widest">Cell
+                                    Background</label>
+                                <input type="color" id="color-cell" value="#FFFFFF" onchange="applyColors()"
+                                    class="w-full h-10 bg-transparent cursor-pointer">
+                            </div>
+                            <div>
+                                <label class="text-[12px] font-mono text-slate-500 block mb-1 uppercase tracking-widest">User Badge
+                                    Color</label>
+                                <input type="color" id="color-badge" value="#ffffff" onchange="applyColors()"
+                                    class="w-full h-10 bg-transparent cursor-pointer">
+                            </div>
+                            <div class="flex items-end">
+                                <button onclick="downloadImage()"
+                                    class="w-full py-3 bg-green-600 text-white font-black rounded-xl shadow-xl text-[10px] tracking-widest hover:bg-green-500 transition-all uppercase">
+                                    Download Image (.PNG)
+                                </button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-[12px] font-mono text-slate-500 block mb-1 uppercase tracking-widest">Calendar
+                                Title</label>
+                            <input type="text" id="custom-title-input" oninput="updateTitleDisplay()"
+                                placeholder="タイトルを入力..."
+                                class="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-sm text-white outline-none focus:border-white/30">
+                        </div>
+                    </div>
+
+
+                    <div class="preview-window glass-panel">
+                        <div id="capture-area" class="p-12 rounded-[2rem] mx-auto">
+                            <div id="preview-title-display" class="text-center font-bold text-4xl mb-8 min-h-[1.2em]">
+                            </div>
+                            <div id="capture-message-display"
+                                class="mb-8 p-4 text-center text-2xl font-bold empty:hidden min-h-[3rem] border border-dashed border-white/10 rounded-xl"
+                                contenteditable="true" data-placeholder="カレンダーのタイトルを入力（ここをクリック）"></div>
+
+                            <div id="export-calendar" class="grid grid-cols-7 gap-1">
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+
+        <footer class="h-20 border-t border-white/5 flex items-center justify-between px-10 bg-black/10">
+            <button id="prev-btn" onclick="prevStep()"
+                class="text-xs font-bold text-slate-500 hover:text-white transition-all invisible">PREV</button>
+            <div class="flex items-center gap-3">
+
+                <div class="flex items-center gap-1 mr-2 border-r border-white/10 pr-4">
+                    <button onclick="saveSettings()" title="設定を保存 (.json)"
+                        class="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:bg-white/20 hover:text-white transition-all">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                            <polyline points="7 3 7 8 15 8"></polyline>
+                        </svg>
+                    </button>
+
+                    <button onclick="document.getElementById('setting-upload').click()" title="設定を読込"
+                        class="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:bg-white/20 hover:text-white transition-all">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                    </button>
+                    <input type="file" id="setting-upload" class="hidden" accept=".json" onchange="loadSettings(this)">
+                </div>
+
+                <button onclick="toggleTheme()" id="theme-toggle-btn"
+                    class="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:bg-white/20 hover:text-white transition-all">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                </button>
+
+                <button id="next-btn" onclick="nextStep()"
+                    class="bg-white/10 border border-white/20 text-white px-10 py-3 rounded-xl font-bold text-xs hover:bg-white/20 transition-all">
+                    NEXT STEP
+                </button>
+            </div>
+        </footer>
+    </main>
+
+    <script>
+        let currentStep = 1;
+        const users = [];
+        const disabledSlots = new Set();
+
+
+
+        // goToStep 関数に追記
+        function goToStep(stepNumber) {
+            currentStep = stepNumber;
+            if (currentStep === 2) initStep2();
+            if (currentStep === 3) initStep3();
+            if (currentStep === 4) initStep4();
+            if (currentStep === 5) initStep5(); // 追加
+            updateDisplay();
+        }
+
+        // ステップ名の定義（サイドバーのテキストと一致させる）
+        const stepNames = ["使用者登録", "枠の無効化", "希望の入力", "スケジュール決定", "画像として保存"];
+
+        function updateDisplay() {
+            const isSelecting = (selectingPriority !== null && selectedUserIndex !== null);
+
+            // 全ステップの表示切り替え
+            for (let i = 1; i <= 5; i++) {
+                const section = document.getElementById(`step${i}`);
+                const sideTab = document.getElementById(`side-${i}`);
+
+                if (section) section.classList.toggle('hidden', i !== currentStep);
+                if (sideTab) sideTab.classList.toggle('active', i === currentStep);
+            }
+
+            // カレンダー画面（Step 2）での表示制御
+            if (currentStep === 2) {
+                const header = document.getElementById('selection-mode-header');
+                const footer = document.getElementById('selection-footer');
+                const instruction = document.getElementById('step2-instruction');
+                const nextBtn = document.getElementById('next-btn');
+                // ★追加: 時間設定パネルの取得
+                const timePanel = document.getElementById('time-setting-panel');
+
+                if (isSelecting) {
+                    // 「希望の入力」から飛んできた場合
+                    header.classList.remove('hidden');
+                    footer.classList.remove('hidden');
+                    // ★追加: 時間設定パネルを隠す
+                    if (timePanel) timePanel.classList.add('hidden');
+                    instruction.innerText = "クリックして希望枠を選択してください（白く光ります）";
+                    document.getElementById('mode-text').innerText = `${users[selectedUserIndex]}さんの 第${selectingPriority}希望 を選択中`;
+
+                    // サイドバーを「希望の入力」のactive状態に強制する（見た目の不整合を防ぐ）
+                    document.getElementById(`side-2`).classList.remove('active');
+                    document.getElementById(`side-3`).classList.add('active');
+                    document.getElementById('current-step-name').innerText = "希望の入力 (枠選択中)";
+                    if (nextBtn) nextBtn.style.display = 'none';
+                } else {
+                    // 通常の「枠の無効化」設定の場合
+                    header.classList.add('hidden');
+                    footer.classList.add('hidden');
+                    // ★追加: 時間設定パネルを表示する
+                    if (timePanel) timePanel.classList.remove('hidden');
+                    instruction.innerText = "除外したい枠を選択してください（グレーアウト）";
+                    document.getElementById('current-step-name').innerText = stepNames[1]; // 枠の無効化
+                    if (nextBtn) nextBtn.style.display = 'block';
+                }
+            } else {
+                // Step 2 以外の場合の基本表示更新
+                document.getElementById('current-step-name').innerText = stepNames[currentStep - 1];
+                const nextBtn = document.getElementById('next-btn');
+                if (nextBtn) nextBtn.style.display = 'block';
+            }
+
+            document.getElementById('step-counter').innerText = `STEP 0${currentStep} / 05`;
+            const prevBtn = document.getElementById('prev-btn');
+            if (prevBtn) prevBtn.style.visibility = currentStep === 1 ? 'hidden' : 'visible';
+        }
+
+        function nextStep() { if (currentStep < 5) goToStep(currentStep + 1); }
+        function prevStep() { if (currentStep > 1) goToStep(currentStep - 1); }
+
+function addUser() {
+            const input = document.getElementById('user-input');
+            if (!input.value) return;
+            
+            // 重複チェック
+            if (users.includes(input.value)) {
+                alert("その名前は既に登録されています");
+                return;
+            }
+
+            users.push(input.value);
+            renderUserListUI(); // ★ここでも再描画関数を使う
+            input.value = '';
+        }
+        function removeUser(buttonElement, userName) {
+            // 1. 配列から削除
+            const index = users.indexOf(userName);
+            if (index !== -1) {
+                users.splice(index, 1);
+            }
+            // 2. 希望データと優先度設定を削除
+            delete userPreferences[userName];
+            delete userPrioritySettings[userName];
+
+            // 3. UIから削除
+            buttonElement.parentElement.remove();
+
+            // 4. もし削除したユーザーを選択中だったらリセット
+            if (selectedUserIndex === index) {
+                selectedUserIndex = null;
+                document.getElementById('pref-selection-area').classList.add('hidden');
+                document.getElementById('pref-placeholder').classList.remove('hidden');
+            }
+        }
+        // 翌月を自動計算して初期値にセットする関数
+        function setDefaultNextMonth() {
+            const now = new Date();
+            now.setMonth(now.getMonth() + 1);
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const nextMonthVal = `${year}-${month}`;
+
+            const monthSelect = document.getElementById('month-select');
+            if (monthSelect) monthSelect.value = nextMonthVal;
+        }
+
+        // 起動時処理
+        window.addEventListener('DOMContentLoaded', () => {
+            setDefaultNextMonth();
+            generateCalendar();
+        });
+
+        // ページ読み込み時、または適切なタイミングで実行
+        window.addEventListener('DOMContentLoaded', () => {
+            setDefaultNextMonth();
+            generateCalendar(); // カレンダーを翌月分で初期描画
+        });
+
+        // --- グローバル変数に追加 ---
+        let timeSettings = {
+            weekday: { 1: "09:00-12:00", 2: "13:00-16:00", 3: "16:00-19:00", 4: "19:00-22:00" },
+            weekend: { 1: "10:00-13:00", 2: "13:00-16:00", 3: "16:00-19:00", 4: "19:00-22:00" }
+        };
+
+        function initStep2() {
+            initTimeInputs();
+            generateCalendar();
+        }
+
+        // Step 2 の HTML 部分に以下を追加（または書き換え）
+        function initTimeInputs() {
+            const weekdayCont = document.getElementById('weekday-times');
+            const weekendCont = document.getElementById('weekend-times');
+            if (!weekdayCont || !weekendCont) return;
+
+            weekdayCont.innerHTML = '';
+            weekendCont.innerHTML = '';
+
+            [1, 2, 3, 4].forEach(num => {
+                const createInput = (type) => {
+                    const div = document.createElement('div');
+                    div.className = "flex items-center gap-2 mb-2";
+                    // oninputをonchangeに変更することで、打ち終わって外れた時だけ描画が更新されるようにします
+                    div.innerHTML = `
+                <span class="text-[10px] text-slate-500 w-8">枠${num}</span>
+                <input type="text" value="${timeSettings[type][num]}" 
+                    onchange="timeSettings['${type}'][${num}] = this.value; renderResultCalendar();"
+                    class="flex-1 bg-white/5 border border-white/10 rounded px-2 py-1 text-[11px] text-white outline-none focus:border-white/30 transition-colors">
+            `;
+                    return div;
+                };
+                weekdayCont.appendChild(createInput('weekday'));
+                weekendCont.appendChild(createInput('weekend'));
+            });
+        }
+
+        // --- カレンダー描画ロジックの共通修正 (スロット表示部分) ---
+        // generateCalendar() および renderResultCalendar() 内のループを修正
+        function getTimeLabel(dayIdx, slotNum) {
+            // dayIdx: 0(月)〜4(金)が平日, 5(土)6(日)が週末
+            const type = (dayIdx >= 5) ? 'weekend' : 'weekday';
+            return timeSettings[type][slotNum] || `枠${slotNum}`;
+        }
+
+        function generateCalendar() {
+            currentStep = 2;
+            initTimeInputs(); // 時間入力フォームの生成
+            renderResultCalendar('calendar-grid'); // 9列カレンダーの描画
+        }
+        let selectedUserIndex = null;
+        let selectingPriority = null;
+        const userPreferences = {}; // 構造: { "名前": { 1: [id1, id2], 2: [], 3: [] } }
+        // 2. Step 3 の初期化
+        function initStep3() {
+            const list = document.getElementById('pref-user-list');
+            if (!list) return;
+            list.innerHTML = '';
+
+            users.forEach((user, index) => {
+                if (!userPreferences[user]) {
+                    userPreferences[user] = { 1: [], 2: [], 3: [] };
+                }
+
+                const isActive = selectedUserIndex === index;
+                const prefs = userPreferences[user];
+                const total = prefs[1].length + prefs[2].length + prefs[3].length;
+
+                const item = document.createElement('div');
+                item.className = `p-4 rounded-xl border cursor-pointer transition-all text-sm flex justify-between items-center mb-2 ${isActive ? 'border-slate-400 bg-white/10 shadow-[0_0_15px_rgba(255,255,255,0.05)]' : 'border-white/5 bg-white/5 hover:bg-white/10'
+                    }`;
+
+                item.innerHTML = `
+            <span class="font-bold tracking-wide">${user}</span>
+            <span class="text-[9px] px-2 py-1 rounded font-black ${total > 0 ? 'bg-white text-black' : 'bg-white/5 text-slate-500'}">
+                ${total > 0 ? `${total} 枠設定済` : '未入力'}
+            </span>
+        `;
+                item.onclick = () => selectUserForPref(index);
+                list.appendChild(item);
+            });
+
+            if (selectedUserIndex !== null) {
+                updatePrefDisplays(users[selectedUserIndex]);
+            }
+        }
+
+        // ユーザー選択時の処理
+        function selectUserForPref(index) {
+            selectedUserIndex = index;
+            const user = users[index];
+
+            document.getElementById('pref-placeholder').classList.add('hidden');
+            document.getElementById('pref-selection-area').classList.remove('hidden');
+            document.getElementById('target-user-name').innerText = user;
+
+            // リストのハイライトを即座に更新するために再描画
+            initStep3();
+        }
+
+        // 右側の詳細パネル（第1〜第3希望の枠内）を更新
+        function updatePrefDisplays(user) {
+            const prefs = userPreferences[user];
+            for (let i = 1; i <= 3; i++) {
+                const display = document.getElementById(`pref-${i}-display`);
+                const slotIds = prefs[i];
+
+                if (slotIds && slotIds.length > 0) {
+                    // 表示を「15日 枠A」のような形式に整形
+                    const badges = slotIds.map(id => {
+                        const parts = id.split('-'); // 2025-01-15-A
+                        return `<span class="bg-white/20 border border-white/10 px-2 py-1 rounded text-[10px] text-white">
+                            ${parts[2]}日:${parts[3]}
+                        </span>`;
+                    }).join('');
+
+                    display.innerHTML = `<div class="flex flex-wrap gap-2">${badges}</div>`;
+                    display.classList.remove('text-slate-400');
+                    display.classList.add('border-solid', 'bg-white/5');
+                } else {
+                    display.innerText = '枠を選択（複数可）';
+                    display.classList.remove('bg-white/5');
+                    display.classList.add('text-slate-400');
+                }
+            }
+        }
+
+        // 完了して戻る
+        function finishSelecting() {
+            // 優先度選択モードを終了
+            selectingPriority = null;
+            // Step 3 (希望入力画面) へ戻る
+            goToStep(3);
+            // Step 3 の表示を最新の状態（どの枠を選んだか）に更新
+            initStep3();
+        }
+
+        // 3. 希望入力ボタン（右側）のクリックイベント
+        function startSelecting(priority) {
+            if (selectedUserIndex === null) {
+                alert("先に左のリストからメンバーを選択してください。");
+                return;
+            }
+            // 優先度をセット
+            selectingPriority = priority;
+
+            // Step 2 (カレンダー) へ移動
+            goToStep(2);
+
+            // カレンダーを再描画して「希望入力モード」のUIに切り替える
+            generateCalendar();
+        }
+        // 既存の generateCalendar 内の btn.onclick を拡張
+        // btn.onclick 内に以下のロジックを追加
+        /*
+            if (currentStep === 2 && selectingPriority !== null) {
+                const user = users[selectedUserIndex];
+                userPreferences[user][selectingPriority] = sid;
+                selectingPriority = null;
+                goToStep(3); // 希望入力に戻る
+                return; // 無効化処理は行わない
+            }
+        */
+        let finalSchedule = {}; // { slotId: "userName" }
+        // 優先度データを保持するオブジェクト
+        // 優先度保存用
+        let userPrioritySettings = {};
+
+        function initStep4() {
+            const container = document.getElementById('priority-settings');
+            if (!container) return;
+
+            // 優先度設定UIの生成
+            container.innerHTML = `<label class="text-[12px] font-mono text-slate-500 block mb-3 uppercase tracking-widest text-center tracking-widest">Member Priority (0=Max)</label>`;
+            users.forEach(user => {
+                if (userPrioritySettings[user] === undefined) userPrioritySettings[user] = 0;
+                const div = document.createElement('div');
+                div.className = "flex items-center justify-between gap-4 bg-white/5 p-3 rounded-2xl border border-white/5 mb-2";
+                div.innerHTML = `
+            <span class="text-xs font-bold text-slate-300 truncate">${user}</span>
+            <input type="number" min="0" value="${userPrioritySettings[user]}" 
+                onchange="userPrioritySettings['${user}'] = parseInt(this.value)"
+                class="w-16 bg-black/40 border border-white/10 rounded-lg px-2 py-1 text-xs text-center text-white focus:border-white/30 outline-none">
+        `;
+                container.appendChild(div);
+            });
+
+            // 既にスケジュールがある場合は描画
+            if (Object.keys(finalSchedule).length > 0) {
+                renderResultCalendar('result-calendar');
+            } else {
+                document.getElementById('result-calendar').innerHTML =
+                    `<div class="col-span-9 text-center py-20 text-slate-500 italic text-xs">「Calculate Schedule」を押してください</div>`;
+            }
+        }
+
+        // 修正されたスケジュール決定ロジック
+        function calculateSchedule() {
+            finalSchedule = {};
+            const mode = document.getElementById('calc-mode').value;
+            const userSlotCounts = {};
+            users.forEach(u => userSlotCounts[u] = 0);
+
+            // 希望レベル 1→2→3 の順
+            for (let pLevel = 1; pLevel <= 3; pLevel++) {
+
+                // その希望レベルで割り当て可能な枠がなくなるまでループ
+                while (true) {
+                    let assignedInThisRound = false;
+
+                    // 1. まず「まだそのレベルに未割当の希望があるユーザー」を抽出
+                    let candidateUsers = users.filter(u => {
+                        const prefs = userPreferences[u] ? userPreferences[u][pLevel] : [];
+                        return prefs.some(sid => !finalSchedule[sid] && !disabledSlots.has(sid));
+                    });
+
+                    if (candidateUsers.length === 0) break;
+
+                    // 2. 候補者を「優先度」と「現在の獲得枠数」でソート
+                    // 同じ条件の場合は Math.random() で順序を完全に入れ替える
+                    candidateUsers.sort((a, b) => {
+                        const priA = userPrioritySettings[a] || 0;
+                        const priB = userPrioritySettings[b] || 0;
+
+                        if (mode === 'priority') {
+                            // 【優先モード】
+                            if (priA !== priB) return priA - priB; // 優先度が違えば絶対順位
+                            if (userSlotCounts[a] !== userSlotCounts[b]) return userSlotCounts[a] - userSlotCounts[b]; // 同じ優先度なら枠が少ない人
+                        } else {
+                            // 【公平モード】
+                            if (userSlotCounts[a] !== userSlotCounts[b]) return userSlotCounts[a] - userSlotCounts[b]; // 枠が少ない人
+                            if (priA !== priB) return priA - priB; // 枠が同じなら優先度
+                        }
+                        return Math.random() - 0.5; // すべて同じなら完全ランダム
+                    });
+
+                    // 3. 最優先になったユーザーに対して、希望枠の中からランダムに1つ割り当て
+                    const targetUser = candidateUsers[0];
+                    const prefs = userPreferences[targetUser][pLevel];
+                    const availableSlots = prefs.filter(sid => !finalSchedule[sid] && !disabledSlots.has(sid));
+
+                    // 枠自体の選択もランダム化
+                    const chosenSid = availableSlots[Math.floor(Math.random() * availableSlots.length)];
+
+                    finalSchedule[chosenSid] = targetUser;
+                    userSlotCounts[targetUser]++;
+                    assignedInThisRound = true;
+
+                    // 1枠ごとに全員の状態（枠数）が変わるため、必ずループの最初に戻ってソートし直す
+                    if (!assignedInThisRound) break;
+                }
+            }
+            renderResultCalendar();
+        }
+
+        // 引数 targetId を追加し、どこにでも描画できるようにします
+        function renderResultCalendar(targetId) {
+            // 引数がない場合は、現在のステップに応じて自動判定
+            if (!targetId) {
+                targetId = (currentStep === 5) ? 'export-calendar' :
+                    (currentStep === 2) ? 'calendar-grid' : 'result-calendar';
+            }
+
+            const grid = document.getElementById(targetId);
+            if (!grid) return;
+
+            grid.innerHTML = '';
+            // 9列グリッド設定
+            grid.style.display = 'grid';
+            grid.style.gridTemplateColumns = '80px repeat(5, minmax(0, 1fr)) 80px repeat(2, minmax(0, 1fr))';
+            grid.style.gap = '8px';
+
+            const monthSelect = document.getElementById('month-select');
+            if (!monthSelect) return;
+            const monthVal = monthSelect.value;
+            const [year, month] = monthVal.split('-').map(Number);
+
+            // 1. ヘッダー (9列)
+            const headers = ['TIME', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'TIME', 'SAT', 'SUN'];
+            headers.forEach((label, i) => {
+                const h = document.createElement('div');
+                h.className = `text-[10px] text-center font-bold mb-3 opacity-60 ${i === 7 ? 'text-blue-400' : i === 8 ? 'text-red-400' : ''}`;
+                h.innerText = label;
+                grid.appendChild(h);
+            });
+
+            let firstDay = new Date(year, month - 1, 1).getDay();
+            let shift = (firstDay === 0) ? 6 : firstDay - 1;
+            const daysInMonth = new Date(year, month, 0).getDate();
+
+            let dayCounter = 1;
+            for (let week = 0; week < 6; week++) {
+                // --- A. 平日時間軸 ---
+                grid.appendChild(createTimeAxisColumn('weekday'));
+
+                // --- B. 平日 (5日間) ---
+                for (let d = 0; d < 5; d++) {
+                    dayCounter = processDayCell(grid, week * 7 + d, shift, dayCounter, daysInMonth, monthVal, false);
+                }
+
+                // --- C. 週末時間軸 ---
+                grid.appendChild(createTimeAxisColumn('weekend'));
+
+                // --- D. 週末 (2日間) ---
+                for (let d = 5; d < 7; d++) {
+                    dayCounter = processDayCell(grid, week * 7 + d, shift, dayCounter, daysInMonth, monthVal, true);
+                }
+
+                if (dayCounter > daysInMonth) break;
+            }
+        }
+
+        // 時間軸の生成
+        function createTimeAxisColumn(type) {
+            const container = document.createElement('div');
+            container.className = "time-axis-label opacity-60";
+
+            // 1. 日付数字(22px)と同じ高さの隙間を最初に入れる
+            const gap = document.createElement('div');
+            gap.className = "time-axis-header-gap";
+            container.appendChild(gap);
+
+            // 2. 時間ラベル(44px + 4px)を生成
+            [1, 2, 3, 4].forEach(num => {
+                const timeStr = timeSettings[type][num];
+                const times = timeStr.split('-');
+
+                const div = document.createElement('div');
+                div.className = "time-axis-unit font-mono";
+
+                if (times.length === 2) {
+                    div.innerHTML = `
+                <div class="leading-none text-white">${times[0]}</div>
+                <div class="w-6 border-t border-white/20 my-1"></div>
+                <div class="leading-none text-white/70">${times[1]}</div>
+            `;
+                } else {
+                    div.innerText = timeStr;
+                }
+                container.appendChild(div);
+            });
+            return container;
+        }
+
+        // 日付セルの生成：希望入力、無効化、スケジュール表示を統合
+        function processDayCell(grid, pos, shift, dayCounter, maxDays, monthVal, isWeekend) {
+            if (pos < shift || dayCounter > maxDays) {
+                grid.appendChild(Object.assign(document.createElement('div'), { className: "empty-cell" }));
+                return dayCounter;
+            }
+
+            const cell = document.createElement('div');
+            cell.className = "day-cell";
+
+            const date = new Date(monthVal + "-" + dayCounter);
+            const dateColor = (date.getDay() === 0) ? 'text-red-400' : (isWeekend ? 'text-blue-400' : '');
+
+            // 日付数字エリア（高さ 22px 固定）
+            cell.innerHTML = `<div class="day-number-text ${dateColor}" style="height:14px; margin-bottom:8px; display:flex; align-items:center;">${dayCounter}</div>`;
+
+            const stack = document.createElement('div');
+            stack.className = "stack flex flex-col";
+
+            ['1', '2', '3', '4'].forEach((slotNum, idx) => {
+                const sid = `${monthVal}-${dayCounter}-${slotNum}`;
+                const user = finalSchedule[sid];
+                const isOff = disabledSlots.has(sid);
+                const div = document.createElement('div');
+
+                // スタイルを直接指定して「絶対に縮ませない」
+                div.style.height = "44px";
+                div.style.minHeight = "44px"; // 追加：最低高さを保証
+                div.style.flexShrink = "0";   // 追加：親が狭くても縮まない
+                div.style.marginBottom = "4px";   // 追加：親が狭くても縮まない
+
+                // 基本クラス（高さはCSSのvar(--slot-height)に依存）
+                const baseClass = "w-full text-[11px] flex items-center justify-center rounded border font-bold cursor-pointer transition-all overflow-hidden whitespace-nowrap ";
+                let label = "-";
+                let specialStyle = "";
+
+                // 希望入力モードの判定
+                if (selectedUserIndex !== null && currentStep < 4) {
+                    const userName = users[selectedUserIndex];
+                    const prefs = userPreferences[userName] || { 1: [], 2: [], 3: [] };
+                    if (selectingPriority !== null && prefs[selectingPriority].includes(sid)) {
+                        label = `第${selectingPriority}`;
+                        specialStyle = " bg-white text-black border-transparent scale-105 z-10";
+                    } else {
+                        for (let p = 1; p <= 3; p++) {
+                            if (prefs[p].includes(sid)) { label = `第${p}`; specialStyle = " border-white/40 text-white bg-white/10"; break; }
+                        }
+                    }
+                }
+
+                // 表示ステータスの決定
+                if (isOff) {
+                    div.className = baseClass + "bg-zinc-900/50 text-zinc-800 border-white/5 opacity-30";
+                    div.innerHTML = `✕`;
+                } else if (user && currentStep >= 4) {
+                    div.className = baseClass + " bg-white text-black font-black shadow-sm";
+                    div.innerText = user;
+                    div.setAttribute('data-user-assigned', user);
+                } else {
+                    const memo = (currentStep === 5 && savedMemos[sid]) ? savedMemos[sid] : label;
+
+                    if (specialStyle) {
+                        // ハイライト時（第1希望など）は、specialStyle だけを適用する（デフォルトの暗い色を混ぜない）
+                        div.className = baseClass + specialStyle;
+                    } else {
+                        // 通常時（空き枠）は、デフォルトのスタイルを適用する
+                        div.className = baseClass + "bg-white/5 text-slate-400 border-white/5 hover:bg-white/10";
+                    }
+
+                    div.innerText = memo;
+                }
+
+                // クリックイベント
+                div.onclick = (e) => {
+                    e.stopPropagation();
+                    if (selectingPriority !== null && selectedUserIndex !== null) {
+                        if (isOff) return;
+                        const userName = users[selectedUserIndex];
+                        for (let p = 1; p <= 3; p++) userPreferences[userName][p] = userPreferences[userName][p].filter(id => id !== sid);
+                        userPreferences[userName][selectingPriority].push(sid);
+                        renderResultCalendar();
+                    } else if (currentStep === 2) {
+                        if (disabledSlots.has(sid)) disabledSlots.delete(sid);
+                        else disabledSlots.add(sid);
+                        renderResultCalendar();
+                    }
+                };
+
+                div.setAttribute('data-sid', sid);
+                stack.appendChild(div);
+            });
+
+            cell.appendChild(stack);
+            grid.appendChild(cell);
+            return dayCounter + 1;
+        }
+        // --- グローバル変数の追加（スクリプトの冒頭付近に配置してください） ---
+        let slotCustomMemos = {}; // 自由入力メモを保持するオブジェクト
+
+        function updatePreviewScale() {
+            const container = document.querySelector('.preview-window');
+            const area = document.getElementById('capture-area');
+            if (!container || !area || currentStep !== 5) return;
+
+            // container.parentElement (col-span-8) の横幅を取得
+            const parentWidth = container.parentElement.clientWidth;
+            // 左右のパディング(40px * 2 = 80px)を引いた「使える幅」
+            const availableWidth = parentWidth - 80;
+            const targetWidth = 1600;
+
+            if (availableWidth < targetWidth) {
+                const scale = availableWidth / targetWidth;
+
+                // 1. 縮小を適用
+                area.style.transform = `scale(${scale})`;
+
+                // 2. 【重要】縮小後の「見た目上の専有幅・高さ」を親に強制的に伝える
+                // これにより、パディングが無視されたりズレたりするのを防ぎます
+                const scaledWidth = targetWidth * scale;
+                const scaledHeight = area.offsetHeight * scale;
+
+                // areaの「器」としてのサイズを縮小後のサイズに合わせる
+                // （transformは見た目しか変えないため、JSで枠のサイズを補正する）
+                area.style.marginBottom = `-${area.offsetHeight - scaledHeight}px`;
+                area.style.marginRight = `-${targetWidth - scaledWidth}px`;
+
+                // 親コンテナの高さを調整
+                container.style.height = (scaledHeight + 80) + "px";
+            } else {
+                // 1倍表示
+                area.style.transform = "scale(1)";
+                area.style.marginBottom = "0";
+                area.style.marginRight = "0";
+                container.style.height = "auto";
+            }
+        }
+        // グローバル変数としてメモを保持するオブジェクトを追加
+        let savedMemos = {}; // { sid: "メモ内容" }
+        let savedTitle = "";
+
+        // タイトル入力をリアルタイムでプレビューに反映
+        function updateTitleDisplay() {
+            const input = document.getElementById('custom-title-input');
+            const display = document.getElementById('preview-title-display');
+            if (input && display) {
+                savedTitle = input.value;
+                display.innerText = savedTitle;
+                // 入力がある時だけ余白を作る
+                display.style.marginBottom = savedTitle ? "1.5rem" : "0";
+            }
+        }
+
+        // --- Step 5 初期化関数 ---
+        function initStep5() {
+            // IDを明示して描画
+            renderResultCalendar('export-calendar');
+
+            const exportGrid = document.getElementById('export-calendar');
+
+            // タイトルの反映
+            const titleDisp = document.getElementById('preview-title-display');
+            const titleInput = document.getElementById('custom-title-input');
+            if (titleInput && titleDisp) {
+                titleInput.value = savedTitle;
+                titleDisp.innerText = savedTitle;
+            }
+
+            // 各スロットへのメモ編集機能
+            exportGrid.querySelectorAll('.stack > div').forEach(slot => {
+                const sid = slot.getAttribute('data-sid');
+                const assigned = slot.getAttribute('data-user-assigned');
+
+                if (!assigned && slot.innerText !== '✕') {
+                    slot.setAttribute('contenteditable', 'true');
+                    slot.oninput = () => { savedMemos[sid] = slot.innerText; };
+                    slot.onfocus = () => slot.style.background = "rgba(255,255,255,0.1)";
+                    slot.onblur = () => {
+                        slot.style.background = "transparent";
+                        applyColors();
+                    };
+                }
+            });
+
+            applyColors();
+            setTimeout(updatePreviewScale, 100);
+        }
+
+        // ウィンドウサイズ変更時にリアルタイムで追従
+        window.addEventListener('resize', updatePreviewScale);
+        // --- デザイン適用関数（色の反映を修正） ---
+        function applyColors() {
+            const bgColor = document.getElementById('color-bg').value;
+            const cellColor = document.getElementById('color-cell').value;
+            const badgeColor = document.getElementById('color-badge').value;
+            const area = document.getElementById('capture-area');
+            const exportGrid = document.getElementById('export-calendar');
+            if (!area || !exportGrid) return;
+
+            area.style.backgroundColor = bgColor;
+
+            const hexToRgb = (hex) => {
+                const r = parseInt(hex.substr(1, 2), 16);
+                const g = parseInt(hex.substr(3, 2), 16);
+                const b = parseInt(hex.substr(5, 2), 16);
+                return { r, g, b };
+            };
+
+            const bgRgb = hexToRgb(bgColor);
+            const cRgb = hexToRgb(cellColor);
+            const bRgb = hexToRgb(badgeColor);
+
+            // 明るさ判定 (299, 587, 114 は人間の知覚に合わせた標準的な重み付け)
+            const bgBright = (bgRgb.r * 299 + bgRgb.g * 587 + bgRgb.b * 114) / 1000;
+            const cBright = (cRgb.r * 299 + cRgb.g * 587 + cRgb.b * 114) / 1000;
+            const bBright = (bRgb.r * 299 + bRgb.g * 587 + bRgb.b * 114) / 1000;
+
+            // --- 色の決定ロジック ---
+            // titleTextColor: 全体背景（color-bg）の上に置く文字用
+            const titleTextColor = bgBright > 155 ? '#1a1a1a' : '#ffffff';
+            // cellTextColor: セル背景（color-cell）の中に置く文字用
+            const cellTextColor = cBright > 155 ? '#1a1a1a' : '#ffffff';
+            // badgeTextColor: バッジ背景（color-badge）の中に置く文字用
+            const badgeTextColor = bBright > 155 ? '#000000' : '#ffffff';
+
+            // タイトルと曜日の色（全体背景に依存）
+            const titleDisplay = document.getElementById('preview-title-display');
+            if (titleDisplay) titleDisplay.style.color = titleTextColor;
+
+            const headers = exportGrid.querySelectorAll('div:nth-child(-n+9)');
+            headers.forEach((h, i) => {
+                if (i === 7) h.style.color = '#60a5fa'; // SAT
+                else if (i === 8) h.style.color = '#f87171'; // SUN
+                else h.style.color = titleTextColor;
+            });
+
+            // 日付セルの処理（ここはセル背景に依存させるので cellTextColor で正しい）
+            exportGrid.querySelectorAll('.day-cell').forEach(c => {
+                c.style.backgroundColor = cellColor;
+                c.style.borderColor = cBright > 155 ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)';
+
+                const dateNum = c.querySelector('.day-number-text');
+                if (dateNum) {
+                    // 土日の色は維持し、平日はセルの明るさに合わせる
+                    if (!dateNum.classList.contains('text-red-400') && !dateNum.classList.contains('text-blue-400')) {
+                        dateNum.style.color = cellTextColor;
+                    }
+                }
+
+                c.querySelectorAll('.stack > div').forEach(slot => {
+                    const userName = slot.getAttribute('data-user-assigned');
+                    if (userName) {
+                        // 割当済みバッジ
+                        slot.style.setProperty('background-color', badgeColor, 'important');
+                        slot.style.setProperty('color', badgeTextColor, 'important');
+                        slot.style.setProperty('border-color', 'transparent', 'important');
+                        slot.style.setProperty('box-shadow', '0 4px 10px 0 rgba(0, 0, 0, 0.2)', 'important');
+                    } else if (slot.innerText !== '✕') {
+                        // 空き枠のボーダーと文字色
+                        slot.style.backgroundColor = 'transparent';
+                        slot.style.color = cellTextColor; // セル内の文字なので cellTextColor
+                        slot.style.borderWidth = '2px';
+                        slot.style.borderStyle = 'solid';
+
+                        if (cBright > 155) {
+                            slot.style.setProperty('border-color', 'rgba(0, 0, 0, 0.2)', 'important');
+                        } else {
+                            slot.style.setProperty('border-color', 'rgba(255, 255, 255, 0.15)', 'important');
+                        }
+                    }
+                });
+            });
+
+            // 【修正箇所】時間軸は全体背景の上にあるため、titleTextColor（全体背景基準）を使うべき
+            document.querySelectorAll('.time-axis-unit').forEach(el => {
+                el.style.color = titleTextColor; // 修正: cellTextColor -> titleTextColor
+                const line = el.querySelector('.border-t');
+                // 線の色も全体背景の明るさ(bgBright)を基準にする
+                if (line) line.style.borderColor = bgBright > 155 ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.2)';
+            });
+        }
+        // --- 画像保存関数（html-to-image版） ---
+        function downloadImage() {
+            const element = document.getElementById('capture-area');
+            const container = document.querySelector('.preview-window');
+            if (!element || !container) return;
+
+            // 選択されている年月を取得
+            const monthVal = document.getElementById('month-select').value;
+            const fileName = `Schedule_${monthVal}.png`;
+
+            // 保存中は一時的にプレビューの縮小を解除して等倍に戻す（画質確保のため）
+            // ※ html-to-imageは現在の表示サイズを基準にするため
+            const originalTransform = element.style.transform;
+            const originalMarginBottom = element.style.marginBottom;
+            const originalMarginRight = element.style.marginRight;
+
+            // 一時的にスタイルをリセット（等倍表示）
+            element.style.transform = 'none';
+            element.style.marginBottom = '0';
+            element.style.marginRight = '0';
+
+            // 画像生成処理
+            // pixelRatio: 2 を指定することで、Retinaディスプレイ級の高画質（2倍解像度）で保存
+            htmlToImage.toPng(element, { pixelRatio: 2 })
+                .then(function (dataUrl) {
+                    const link = document.createElement('a');
+                    link.download = fileName;
+                    link.href = dataUrl;
+                    link.click();
+
+                    // スタイルを元に戻す（プレビュー表示の復帰）
+                    element.style.transform = originalTransform;
+                    element.style.marginBottom = originalMarginBottom;
+                    element.style.marginRight = originalMarginRight;
+                })
+                .catch(function (error) {
+                    console.error('画像生成に失敗しました:', error);
+                    alert('画像の保存に失敗しました。ブラウザのセキュリティ設定などを確認してください。');
+
+                    // エラー時もスタイルを戻す
+                    element.style.transform = originalTransform;
+                    element.style.marginBottom = originalMarginBottom;
+                    element.style.marginRight = originalMarginRight;
+                });
+        }
+
+        // ウィンドウリサイズ監視
+        window.addEventListener('resize', updatePreviewScale);
+
+
+        // --- テーマ切り替え機能 ---
+        function toggleTheme() {
+            document.body.classList.toggle('light-mode');
+            const isLight = document.body.classList.contains('light-mode');
+            const btn = document.getElementById('theme-toggle-btn');
+
+            if (isLight) {
+                // 太陽アイコンに変更
+                btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>`;
+                btn.classList.add('text-amber-500'); // 太陽は少し黄色っぽく
+            } else {
+                // 月アイコンに変更
+                btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`;
+                btn.classList.remove('text-amber-500');
+            }
+        }
+
+        // --- 設定データ（メンバー・時間割）の一括保存・読込機能 ---
+
+        // 保存機能
+        function saveSettings() {
+            const data = {
+                // 1. メンバーリスト
+                users: users,
+                // 2. 優先度設定
+                priorities: userPrioritySettings,
+                // 3. ★追加: 枠の時間設定
+                timeSettings: timeSettings
+            };
+
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            // ファイル名を現在時刻入りにする例: settings_20231201.json
+            const dateStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
+            a.download = `room_settings_${dateStr}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+// ---------------------------------------------------------
+        // 1. ★追加: メンバーリストの再描画関数
+        //    (これを追加しないと、読み込み後に画面が出ません)
+        // ---------------------------------------------------------
+        function renderUserListUI() {
+            const list = document.getElementById('user-list');
+            if (!list) return;
+            
+            list.innerHTML = ''; // 現在の表示を一度クリア
+
+            users.forEach(user => {
+                const tag = document.createElement('div');
+                tag.className = "glass-panel px-4 py-2 rounded-xl flex items-center gap-3 text-sm animate-fade-in";
+                // 削除ボタン付きのタグを生成
+                tag.innerHTML = `
+                    <span class="opacity-80">${user}</span>
+                    <button onclick="removeUser(this, '${user}')" class="text-slate-500 hover:text-red-400">×</button>
+                `;
+                list.appendChild(tag);
+            });
+        }
+
+        // ---------------------------------------------------------
+        // 2. ★修正: 設定読込関数
+        //    (読み込み完了後に renderUserListUI を呼び出すように変更)
+        // ---------------------------------------------------------
+        function loadSettings(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    let msg = "";
+
+                    // --- メンバーの復元 ---
+                    if (data.users && Array.isArray(data.users)) {
+                        users.length = 0; // 配列をリセット
+                        users.push(...data.users); // 新しいデータを追加
+                        msg += `メンバー(${users.length}名) `;
+                    }
+
+                    // --- 優先度設定の復元 ---
+                    if (data.priorities) {
+                        userPrioritySettings = data.priorities;
+                    }
+
+                    // --- 時間割設定の復元 ---
+                    if (data.timeSettings) {
+                        timeSettings = data.timeSettings;
+                        msg += `・時間割 `;
+                    }
+
+                    // ★重要: ここで画面を再描画します
+                    renderUserListUI();     // Step 1 リスト更新
+                    initStep3();            // Step 3 優先度リスト更新
+                    initTimeInputs();       // 時間割フォーム更新
+                    
+                    // カレンダーが表示されていれば更新
+                    const grid = document.getElementById('calendar-grid');
+                    if (grid && grid.innerHTML !== "") {
+                        renderResultCalendar('calendar-grid');
+                    }
+
+                    alert(`設定を読み込みました\n[復元項目]: ${msg}`);
+
+                } catch (err) {
+                    console.error(err);
+                    alert("ファイルの読み込みに失敗しました。\nデータ形式が正しくありません。");
+                } finally {
+                    input.value = ''; // ファイル選択をリセット
+                }
+            };
+            reader.readAsText(file);
+        }
+    </script>
+</body>
+
+</html>
