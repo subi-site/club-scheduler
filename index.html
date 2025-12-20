@@ -368,7 +368,7 @@
             /* Slate-200 */
             --text-main: #0f2a28;
             /* Slate-900 */
-            --text-sub: #476969;
+            --text-sub: #1c2424;
             /* Slate-600 */
         }
 
@@ -398,15 +398,15 @@
         }
 
         body.light-mode .text-white {
-            color: #07201c;
+            color: #000000;
         }
 
         body.light-mode .text-slate-300 {
-            color: #116e8a;
+            color: #4e6870;
         }
 
         body.light-mode .text-slate-400 {
-            color: #476469;
+            color: #2b3536;
         }
 
         body.light-mode .text-slate-500 {
@@ -421,7 +421,7 @@
             background: rgba(255, 255, 255, 0.7);
             /* 白っぽく透過 */
             border-color: rgba(0, 0, 0, 0.1);
-            box-shadow: 0 4px 32px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 4px 32px rgba(0, 0, 0, 0.10);
         }
 
 
@@ -518,6 +518,96 @@
                 color 0.5s ease,
                 box-shadow 0.5s ease;
         }
+
+        /* Step 0 のリスト内の黒背景を白っぽく */
+        body.light-mode .bg-black\/20 {
+            background-color: rgba(0, 0, 0, 0.05) !important;
+            border-color: rgba(0, 0, 0, 0.1) !important;
+        }
+
+        :root {
+            /* --- 色の定義 (HEX Color Codes) --- */
+
+            /* Step 1: Blue */
+            --hex-step1: #b8a4ff;
+            /* Step 2: Purple */
+            --hex-step2: rgb(132, 160, 252);
+            /* Step 3: Yellow */
+            --hex-step3: #a4f4ff;
+            /* Step 4: Pink */
+            --hex-step4: rgb(114, 244, 190);
+            /* Step 5: Green */
+            --hex-step5: #acffa4;
+        }
+
+        /* --- Light Mode 時の色定義 (少し濃くする) --- */
+        body.light-mode {
+            --hex-step1: #21ac7e;
+            /* Blue-600 */
+            --hex-step2: #31ac21;
+            /* Purple-600 */
+            --hex-step3: #82ac21;
+            /* Amber-600 */
+            --hex-step4: #ac9721;
+            /* Pink-600 */
+            --hex-step5: #ac5421;
+            /* Green-600 */
+        }
+
+        /* ------------------------------------------------------
+           汎用アクセントクラス (カラーコード対応版)
+           ------------------------------------------------------ */
+
+        /* 親要素で使うクラス：使用する変数をセットします */
+        .theme-step-1 {
+            --accent-color: var(--hex-step1);
+        }
+
+        .theme-step-2 {
+            --accent-color: var(--hex-step2);
+        }
+
+        .theme-step-3 {
+            --accent-color: var(--hex-step3);
+        }
+
+        .theme-step-4 {
+            --accent-color: var(--hex-step4);
+        }
+
+        .theme-step-5 {
+            --accent-color: var(--hex-step5);
+        }
+
+        /* 子要素で使う共通クラス */
+
+        /* 文字色 */
+        .accent-text {
+            color: var(--accent-color) !important;
+        }
+
+        /* 背景色（透明度10%）: color-mix関数を使ってHEX色を薄くします */
+        .accent-bg {
+            background-color: color-mix(in srgb, var(--accent-color), transparent 90%) !important;
+        }
+
+        /* ボーダー色 */
+        .accent-border {
+            border-color: var(--accent-color) !important;
+        }
+
+        .accent-border-l {
+            border-left-color: var(--accent-color) !important;
+        }
+
+        /* ホバー時の挙動 */
+        .group:hover .group-hover\:accent-text {
+            color: var(--accent-color) !important;
+        }
+
+        .group:hover .group-hover\:scale-110 {
+            transform: scale(1.1);
+        }
     </style>
 </head>
 
@@ -530,8 +620,21 @@
         </div>
 
         <nav class="flex-1 space-y-1 text-sm font-medium">
-            <div onclick="goToStep(1)" id="side-1" class="step-item active p-4 rounded-r-xl">使用者登録</div>
-            <div onclick="goToStep(2)" id="side-2" class="step-item p-4 rounded-r-xl">枠の無効化</div>
+            <div onclick="goToStep(0)" id="side-0"
+                class="step-item active p-4 rounded-r-xl border-l-4 border-slate-500 bg-white/5 text-white">
+                <div class="flex items-center gap-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                    使い方ガイド
+                </div>
+            </div>
+
+            <div onclick="goToStep(1)" id="side-1" class="step-item p-4 rounded-r-xl">使用者登録</div>
+            <div onclick="resetAndGoToStep2()" id="side-2" class="step-item p-4 rounded-r-xl">枠の無効化</div>
             <div onclick="goToStep(3)" id="side-3" class="step-item p-4 rounded-r-xl">希望の入力</div>
             <div onclick="goToStep(4)" id="side-4" class="step-item p-4 rounded-r-xl">スケジュール決定</div>
             <div onclick="goToStep(5)" id="side-5" class="step-item p-4 rounded-r-xl">画像として保存</div>
@@ -549,8 +652,209 @@
 
         <div class="u-main-content custom-scroll">
             <div id="settings-view" class="u-settings-container">
+                <section id="step0" class="space-y-8 animate-fade-in">
+                    <div class="text-center space-y-4 mb-10">
+                        <h2 class="text-3xl font-bold tracking-tight text-slate-300">How to use Room Manager</h2>
+                        <p class="text-slate-400">公平かつスムーズなスケジュール調整のための5つのステップ</p>
+                    </div>
 
-                <section id="step1" class="space-y-6">
+                    <div class="glass-panel p-8 md:p-12 rounded-[2rem] max-w-5xl mx-auto">
+
+                        <div class="mb-12">
+                            <h3
+                                class="text-xl font-bold text-white border-b border-white/10 pb-4 mb-6 flex items-center gap-3">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round" class="text-white">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                                </svg>
+                                はじめに
+                            </h3>
+                            <div class="text-slate-300 space-y-4 leading-8 text-sm md:text-base">
+                                <p>
+                                    このツールは、スケジュール調整を公平かつ効率的に行うために設計されています。
+                                    管理者は以下の手順に従って設定を行ってください。
+                                </p>
+                                <p>
+                                    基本的な流れは、参加メンバーの登録から始まり、空き枠の設定、希望の聴取、そしてアルゴリズムによる自動割り当てとなります。
+                                    最終的なスケジュールは画像として出力できます。
+                                </p>
+                                <ul
+                                    class="list-disc list-inside bg-black/20 p-4 rounded-xl text-slate-300 border border-white/5">
+                                    <li>画面下部のフッターにある<span
+                                            class="text-white font-bold">「テーマ切り替え」</span>ボタンでライトモード/ダークモードを切り替えられます。
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="max-w-5xl mx-auto space-y-6">
+
+                            <div class="max-w-5xl mx-auto space-y-6">
+
+                                <div class="glass-panel theme-step-1 p-8 md:p-10 rounded-[2rem] relative hover:bg-white/5 transition-all cursor-pointer group overflow-hidden border-l-4 accent-border-l"
+                                    onclick="goToStep(1)">
+                                    <div
+                                        class="absolute top-6 right-6 p-3 accent-bg rounded-xl accent-text shadow-[0_0_15px_rgba(255,255,255,0.1)] group-hover:scale-110 transition-transform duration-500">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                            stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                            <circle cx="9" cy="7" r="4"></circle>
+                                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                        </svg>
+                                    </div>
+
+                                    <div class="pr-16">
+                                        <span
+                                            class="text-5xl font-mono accent-text mb-4 block opacity-30 group-hover:opacity-50 transition-all">01</span>
+                                        <h3
+                                            class="text-xl font-bold text-white mb-4 group-hover:accent-text transition-colors">
+                                            メンバー登録</h3>
+                                        <div class="text-slate-400 text-sm leading-7 space-y-3">
+                                            <p>利用するメンバー全員の名前を登録します。</p>
+                                            <ul
+                                                class="list-disc list-inside bg-black/20 p-4 rounded-xl text-slate-300 border border-white/5">
+                                                <li>画面下部のフッターにある<span
+                                                        class="text-white font-bold">「保存」</span>ボタンで.jsonファイルにバックアップ可能です。
+                                                </li>
+                                                <li>次回以降は<span class="text-white font-bold">「読込」</span>から瞬時に復元できます。
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="glass-panel theme-step-2 p-8 md:p-10 rounded-[2rem] relative hover:bg-white/5 transition-all cursor-pointer group overflow-hidden border-l-4 accent-border-l"
+                                    onclick="goToStep(2)">
+                                    <div
+                                        class="absolute top-6 right-6 p-3 accent-bg rounded-xl accent-text shadow-[0_0_15px_rgba(255,255,255,0.1)] group-hover:scale-110 transition-transform duration-500">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                            stroke-linecap="round" stroke-linejoin="round">
+                                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                                        </svg>
+                                    </div>
+                                    <div class="pr-16">
+                                        <span
+                                            class="text-5xl font-mono accent-text mb-4 block opacity-30 group-hover:opacity-50 transition-all">02</span>
+                                        <h3
+                                            class="text-xl font-bold text-white mb-4 group-hover:accent-text transition-colors">
+                                            枠設定・無効化</h3>
+                                        <div class="text-slate-400 text-sm leading-7">
+                                            <p>カレンダー上の<span class="text-white">「使用できない日時」</span>をクリックして除外設定を行います。</p>
+                                            <p>
+                                                上部の<span class="text-white">「TIME Slot
+                                                    Settings」</span>パネルで、枠の時間を平日、週末で設定することができます。
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="glass-panel theme-step-3 p-8 md:p-10 rounded-[2rem] relative hover:bg-white/5 transition-all cursor-pointer group overflow-hidden border-l-4 accent-border-l"
+                                    onclick="goToStep(3)">
+                                    <div
+                                        class="absolute top-6 right-6 p-3 accent-bg rounded-xl accent-text shadow-[0_0_15px_rgba(255,255,255,0.1)] group-hover:scale-110 transition-transform duration-500">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                            stroke-linecap="round" stroke-linejoin="round">
+                                            <polygon
+                                                points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
+                                            </polygon>
+                                        </svg>
+                                    </div>
+                                    <div class="pr-16">
+                                        <span
+                                            class="text-5xl font-mono accent-text mb-4 block opacity-30 group-hover:opacity-50 transition-all">03</span>
+                                        <h3
+                                            class="text-xl font-bold text-white mb-4 group-hover:accent-text transition-colors">
+                                            希望の入力</h3>
+                                        <div class="text-slate-400 text-sm leading-7 space-y-3">
+                                            <p>各メンバーの希望枠（第1〜第3希望）を代理入力します。</p>
+                                            <ul
+                                                class="list-disc list-inside bg-black/20 p-4 rounded-xl text-slate-300 border border-white/5">
+                                                <li>この段階では、他の使用者と希望枠が重複していても指定が可能です。</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="glass-panel theme-step-4 p-8 md:p-10 rounded-[2rem] relative hover:bg-white/5 transition-all cursor-pointer group overflow-hidden border-l-4 accent-border-l"
+                                    onclick="goToStep(4)">
+                                    <div
+                                        class="absolute top-6 right-6 p-3 accent-bg rounded-xl accent-text shadow-[0_0_15px_rgba(255,255,255,0.1)] group-hover:scale-110 transition-transform duration-500">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                            stroke-linecap="round" stroke-linejoin="round">
+                                            <rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect>
+                                            <line x1="8" y1="6" x2="16" y2="6"></line>
+                                            <line x1="16" y1="14" x2="16" y2="18"></line>
+                                            <path d="M16 10h.01"></path>
+                                            <path d="M12 10h.01"></path>
+                                            <path d="M8 10h.01"></path>
+                                            <path d="M12 14h.01"></path>
+                                            <path d="M8 14h.01"></path>
+                                            <path d="M12 18h.01"></path>
+                                            <path d="M8 18h.01"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="pr-16">
+                                        <span
+                                            class="text-5xl font-mono accent-text mb-4 block opacity-30 group-hover:opacity-50 transition-all">04</span>
+                                        <h3
+                                            class="text-xl font-bold text-white mb-4 group-hover:accent-text transition-colors">
+                                            自動割り当て</h3>
+                                        <div class="text-slate-400 text-sm leading-7">
+                                            <p>「公平モード」または「優先モード」を選択し、スケジュールを自動生成します。</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="glass-panel theme-step-5 p-8 md:p-10 rounded-[2rem] relative hover:bg-white/5 transition-all cursor-pointer group overflow-hidden border-l-4 accent-border-l"
+                                    onclick="goToStep(5)">
+                                    <div
+                                        class="absolute top-6 right-6 p-3 accent-bg rounded-xl accent-text shadow-[0_0_15px_rgba(255,255,255,0.1)] group-hover:scale-110 transition-transform duration-500">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                            stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                            <polyline points="7 10 12 15 17 10"></polyline>
+                                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                                        </svg>
+                                    </div>
+                                    <div class="pr-16">
+                                        <span
+                                            class="text-5xl font-mono accent-text mb-4 block opacity-30 group-hover:opacity-50 transition-all">05</span>
+                                        <h3
+                                            class="text-xl font-bold text-white mb-4 group-hover:accent-text transition-colors">
+                                            画像保存・共有</h3>
+                                        <div class="text-slate-400 text-sm leading-7">
+                                            <p>完成したスケジュールのタイトルとテーマを設定し、高画質PNG画像として保存します。</p>
+                                            <p>任意の空いている枠にメモを記入することもできます。</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div class="flex justify-center mt-12">
+                        <button onclick="goToStep(1)"
+                            class="bg-white text-black px-12 py-4 rounded-full font-bold text-sm tracking-widest hover:scale-105 transition-all shadow-[0_0_20px_rgba(255,255,255,0.3)]">
+                            START SETUP
+                        </button>
+                    </div>
+                </section>
+
+                <section id="step1" class="hidden space-y-6">
                     <div class="glass-panel p-10 rounded-[2rem]">
                         <h3 class="text-lg font-bold mb-6 opacity-90">利用メンバーの追加</h3>
                         <div class="flex gap-3">
@@ -721,13 +1025,16 @@
                                     class="w-full h-10 bg-transparent cursor-pointer">
                             </div>
                             <div>
-                                <label class="text-[12px] font-mono text-slate-500 block mb-1 uppercase tracking-widest">Cell
+                                <label
+                                    class="text-[12px] font-mono text-slate-500 block mb-1 uppercase tracking-widest">Cell
                                     Background</label>
                                 <input type="color" id="color-cell" value="#FFFFFF" onchange="applyColors()"
                                     class="w-full h-10 bg-transparent cursor-pointer">
                             </div>
                             <div>
-                                <label class="text-[12px] font-mono text-slate-500 block mb-1 uppercase tracking-widest">User Badge
+                                <label
+                                    class="text-[12px] font-mono text-slate-500 block mb-1 uppercase tracking-widest">User
+                                    Badge
                                     Color</label>
                                 <input type="color" id="color-badge" value="#ffffff" onchange="applyColors()"
                                     class="w-full h-10 bg-transparent cursor-pointer">
@@ -740,7 +1047,8 @@
                             </div>
                         </div>
                         <div>
-                            <label class="text-[12px] font-mono text-slate-500 block mb-1 uppercase tracking-widest">Calendar
+                            <label
+                                class="text-[12px] font-mono text-slate-500 block mb-1 uppercase tracking-widest">Calendar
                                 Title</label>
                             <input type="text" id="custom-title-input" oninput="updateTitleDisplay()"
                                 placeholder="タイトルを入力..."
@@ -811,89 +1119,122 @@
     </main>
 
     <script>
-        let currentStep = 1;
+        // 【修正】開始ステップを 0 に変更
+        let currentStep = 0;
         const users = [];
         const disabledSlots = new Set();
 
+        // 【修正】配列の先頭に「使い方」を追加（ステップ番号とインデックスを一致させるため）
+        const stepNames = ["使い方ガイド", "使用者登録", "枠の無効化", "希望の入力", "スケジュール決定", "画像として保存"];
 
-
-        // goToStep 関数に追記
+        // goToStep 関数 (変更なし、ロジックはそのまま機能します)
         function goToStep(stepNumber) {
             currentStep = stepNumber;
+            if (stepNumber !== 2) {
+                selectingPriority = null;
+            }
+
+            currentStep = stepNumber;
+
+            // 各ステップの初期化処理
             if (currentStep === 2) initStep2();
             if (currentStep === 3) initStep3();
             if (currentStep === 4) initStep4();
-            if (currentStep === 5) initStep5(); // 追加
+            if (currentStep === 5) initStep5();
+
             updateDisplay();
         }
 
-        // ステップ名の定義（サイドバーのテキストと一致させる）
-        const stepNames = ["使用者登録", "枠の無効化", "希望の入力", "スケジュール決定", "画像として保存"];
+// 1. 完全リセットしてStep 2へ移動する関数
+        function resetAndGoToStep2() {
+            selectingPriority = null; // 選択モード解除
+            selectedUserIndex = null; // ★追加: 選択中のメンバーも解除（これで希望表示が消えます）
+            goToStep(2);
+        }
 
+        // 2. 表示更新関数（サイドバーの無効化処理を追加）
         function updateDisplay() {
             const isSelecting = (selectingPriority !== null && selectedUserIndex !== null);
 
-            // 全ステップの表示切り替え
-            for (let i = 1; i <= 5; i++) {
+            // ★追加: 希望選択中はサイドバー（タブ）を操作できないようにする
+            const nav = document.querySelector('aside nav');
+            if (nav) {
+                if (isSelecting) {
+                    nav.classList.add('pointer-events-none', 'opacity-40'); // クリック禁止＆薄くする
+                } else {
+                    nav.classList.remove('pointer-events-none', 'opacity-40');
+                }
+            }
+
+            // --- 以下、既存ロジック（サイドバーのハイライト制御など） ---
+            const activeSidebarStep = (currentStep === 2 && isSelecting) ? 3 : currentStep;
+
+            for (let i = 0; i <= 5; i++) {
                 const section = document.getElementById(`step${i}`);
                 const sideTab = document.getElementById(`side-${i}`);
 
                 if (section) section.classList.toggle('hidden', i !== currentStep);
-                if (sideTab) sideTab.classList.toggle('active', i === currentStep);
+                
+                if (sideTab) {
+                    if (i === activeSidebarStep) {
+                        sideTab.classList.add('active');
+                        if (i === 0) sideTab.classList.add('border-l-4', 'border-slate-500', 'bg-white/5', 'text-white');
+                    } else {
+                        sideTab.classList.remove('active');
+                        if (i === 0) sideTab.classList.remove('border-l-4', 'border-slate-500', 'bg-white/5', 'text-white');
+                    }
+                }
             }
 
-            // カレンダー画面（Step 2）での表示制御
+            // Step 2 の表示制御
+            const nextBtn = document.getElementById('next-btn');
+
             if (currentStep === 2) {
                 const header = document.getElementById('selection-mode-header');
                 const footer = document.getElementById('selection-footer');
                 const instruction = document.getElementById('step2-instruction');
-                const nextBtn = document.getElementById('next-btn');
-                // ★追加: 時間設定パネルの取得
                 const timePanel = document.getElementById('time-setting-panel');
+                const modeText = document.getElementById('mode-text');
+
+                document.getElementById('current-step-name').innerText = isSelecting ? "HOPE SELECTION" : stepNames[currentStep];
 
                 if (isSelecting) {
-                    // 「希望の入力」から飛んできた場合
-                    header.classList.remove('hidden');
-                    footer.classList.remove('hidden');
-                    // ★追加: 時間設定パネルを隠す
+                    if (header) header.classList.remove('hidden');
+                    if (footer) footer.classList.remove('hidden');
                     if (timePanel) timePanel.classList.add('hidden');
-                    instruction.innerText = "クリックして希望枠を選択してください（白く光ります）";
-                    document.getElementById('mode-text').innerText = `${users[selectedUserIndex]}さんの 第${selectingPriority}希望 を選択中`;
+                    if (nextBtn) nextBtn.style.display = 'none'; // NEXTボタンを隠す
 
-                    // サイドバーを「希望の入力」のactive状態に強制する（見た目の不整合を防ぐ）
-                    document.getElementById(`side-2`).classList.remove('active');
-                    document.getElementById(`side-3`).classList.add('active');
-                    document.getElementById('current-step-name').innerText = "希望の入力 (枠選択中)";
-                    if (nextBtn) nextBtn.style.display = 'none';
+                    if (modeText && users[selectedUserIndex]) {
+                        modeText.innerText = `${users[selectedUserIndex]}さんの 第${selectingPriority}希望 を選択中`;
+                    }
+                    if (instruction) instruction.innerText = "クリックして希望枠を選択してください（白く光ります）";
                 } else {
-                    // 通常の「枠の無効化」設定の場合
-                    header.classList.add('hidden');
-                    footer.classList.add('hidden');
-                    // ★追加: 時間設定パネルを表示する
+                    if (header) header.classList.add('hidden');
+                    if (footer) footer.classList.add('hidden');
                     if (timePanel) timePanel.classList.remove('hidden');
-                    instruction.innerText = "除外したい枠を選択してください（グレーアウト）";
-                    document.getElementById('current-step-name').innerText = stepNames[1]; // 枠の無効化
-                    if (nextBtn) nextBtn.style.display = 'block';
+                    if (nextBtn) nextBtn.style.display = 'block'; // NEXTボタンを表示
+
+                    if (instruction) instruction.innerText = "除外したい枠を選択してください（グレーアウト）";
                 }
             } else {
-                // Step 2 以外の場合の基本表示更新
-                document.getElementById('current-step-name').innerText = stepNames[currentStep - 1];
-                const nextBtn = document.getElementById('next-btn');
+                document.getElementById('current-step-name').innerText = stepNames[currentStep];
                 if (nextBtn) nextBtn.style.display = 'block';
             }
 
-            document.getElementById('step-counter').innerText = `STEP 0${currentStep} / 05`;
+            // カウンターとPREVボタン制御
+            document.getElementById('step-counter').innerText = currentStep === 0 ? "GUIDE" : `STEP 0${currentStep} / 05`;
             const prevBtn = document.getElementById('prev-btn');
-            if (prevBtn) prevBtn.style.visibility = currentStep === 1 ? 'hidden' : 'visible';
+            if (prevBtn) {
+                // Step 0 または 希望選択中は PREVボタンも隠す
+                prevBtn.style.visibility = (currentStep === 0 || isSelecting) ? 'hidden' : 'visible';
+            }
         }
-
         function nextStep() { if (currentStep < 5) goToStep(currentStep + 1); }
-        function prevStep() { if (currentStep > 1) goToStep(currentStep - 1); }
-
-function addUser() {
+        function prevStep() { if (currentStep > 0) goToStep(currentStep - 1); }
+        function addUser() {
             const input = document.getElementById('user-input');
             if (!input.value) return;
-            
+
             // 重複チェック
             if (users.includes(input.value)) {
                 alert("その名前は既に登録されています");
@@ -1002,12 +1343,13 @@ function addUser() {
         let selectedUserIndex = null;
         let selectingPriority = null;
         const userPreferences = {}; // 構造: { "名前": { 1: [id1, id2], 2: [], 3: [] } }
-        // 2. Step 3 の初期化
+// 2. Step 3 の初期化 (表示の整合性を修正)
         function initStep3() {
             const list = document.getElementById('pref-user-list');
             if (!list) return;
             list.innerHTML = '';
 
+            // リストの生成
             users.forEach((user, index) => {
                 if (!userPreferences[user]) {
                     userPreferences[user] = { 1: [], 2: [], 3: [] };
@@ -1018,22 +1360,42 @@ function addUser() {
                 const total = prefs[1].length + prefs[2].length + prefs[3].length;
 
                 const item = document.createElement('div');
-                item.className = `p-4 rounded-xl border cursor-pointer transition-all text-sm flex justify-between items-center mb-2 ${isActive ? 'border-slate-400 bg-white/10 shadow-[0_0_15px_rgba(255,255,255,0.05)]' : 'border-white/5 bg-white/5 hover:bg-white/10'
-                    }`;
+                item.className = `p-4 rounded-xl border cursor-pointer transition-all text-sm flex justify-between items-center mb-2 ${
+                    isActive ? 'border-slate-400 bg-white/10 shadow-[0_0_15px_rgba(255,255,255,0.05)]' : 'border-white/5 bg-white/5 hover:bg-white/10'
+                }`;
 
                 item.innerHTML = `
-            <span class="font-bold tracking-wide">${user}</span>
-            <span class="text-[9px] px-2 py-1 rounded font-black ${total > 0 ? 'bg-white text-black' : 'bg-white/5 text-slate-500'}">
-                ${total > 0 ? `${total} 枠設定済` : '未入力'}
-            </span>
-        `;
+                    <span class="font-bold tracking-wide">${user}</span>
+                    <span class="text-[9px] px-2 py-1 rounded font-black ${total > 0 ? 'bg-white text-black' : 'bg-white/5 text-slate-500'}">
+                        ${total > 0 ? `${total} 枠設定済` : '未入力'}
+                    </span>
+                `;
                 item.onclick = () => selectUserForPref(index);
                 list.appendChild(item);
             });
 
-            if (selectedUserIndex !== null) {
+            // ★修正: 右側のパネル表示もここで状態に合わせて完全に同期させる
+            const placeholder = document.getElementById('pref-placeholder');
+            const selectionArea = document.getElementById('pref-selection-area');
+            const targetName = document.getElementById('target-user-name');
+
+            if (selectedUserIndex !== null && users[selectedUserIndex]) {
+                // ユーザー選択中ならパネルを表示
+                placeholder.classList.add('hidden');
+                selectionArea.classList.remove('hidden');
+                targetName.innerText = users[selectedUserIndex];
                 updatePrefDisplays(users[selectedUserIndex]);
+            } else {
+                // 未選択ならプレースホルダーを表示 (Step 2から戻ったときなどにここが実行され、表示がリセットされる)
+                placeholder.classList.remove('hidden');
+                selectionArea.classList.add('hidden');
             }
+        }
+
+        // ユーザー選択時の処理 (initStep3 に表示制御を任せてシンプル化)
+        function selectUserForPref(index) {
+            selectedUserIndex = index;
+            initStep3(); // 再描画して反映
         }
 
         // ユーザー選択時の処理
@@ -1368,12 +1730,33 @@ function addUser() {
                 // クリックイベント
                 div.onclick = (e) => {
                     e.stopPropagation();
+
+                    // --- A. 希望選択モード (Step 3) ---
                     if (selectingPriority !== null && selectedUserIndex !== null) {
-                        if (isOff) return;
+                        if (isOff) return; // 無効な枠はクリック不可
                         const userName = users[selectedUserIndex];
-                        for (let p = 1; p <= 3; p++) userPreferences[userName][p] = userPreferences[userName][p].filter(id => id !== sid);
-                        userPreferences[userName][selectingPriority].push(sid);
-                        renderResultCalendar();
+                        const currentList = userPreferences[userName][selectingPriority];
+
+                        // ★修正: すでに選択されているかチェック
+                        const existingIndex = currentList.indexOf(sid);
+
+                        if (existingIndex !== -1) {
+                            // ケース1: すでに今の優先度で選択済み -> 解除する (Toggle OFF)
+                            userPreferences[userName][selectingPriority].splice(existingIndex, 1);
+                        } else {
+                            // ケース2: 未選択、または別の優先度で選択中 -> 今の優先度で上書き (Toggle ON)
+
+                            // 他の優先度(1~3)からこの枠を削除して重複を防ぐ
+                            for (let p = 1; p <= 3; p++) {
+                                userPreferences[userName][p] = userPreferences[userName][p].filter(id => id !== sid);
+                            }
+                            // 現在の優先度リストに追加
+                            userPreferences[userName][selectingPriority].push(sid);
+                        }
+
+                        renderResultCalendar(); // 再描画
+
+                        // --- B. 枠の無効化モード (Step 2) ---
                     } else if (currentStep === 2) {
                         if (disabledSlots.has(sid)) disabledSlots.delete(sid);
                         else disabledSlots.add(sid);
@@ -1482,7 +1865,7 @@ function addUser() {
 
         // ウィンドウサイズ変更時にリアルタイムで追従
         window.addEventListener('resize', updatePreviewScale);
-        // --- デザイン適用関数（色の反映を修正） ---
+// --- デザイン適用関数（色の反映を修正：週末カラーの自動調整を追加） ---
         function applyColors() {
             const bgColor = document.getElementById('color-bg').value;
             const cellColor = document.getElementById('color-cell').value;
@@ -1504,43 +1887,49 @@ function addUser() {
             const cRgb = hexToRgb(cellColor);
             const bRgb = hexToRgb(badgeColor);
 
-            // 明るさ判定 (299, 587, 114 は人間の知覚に合わせた標準的な重み付け)
+            // 明るさ判定
             const bgBright = (bgRgb.r * 299 + bgRgb.g * 587 + bgRgb.b * 114) / 1000;
             const cBright = (cRgb.r * 299 + cRgb.g * 587 + cRgb.b * 114) / 1000;
             const bBright = (bRgb.r * 299 + bRgb.g * 587 + bRgb.b * 114) / 1000;
 
-            // --- 色の決定ロジック ---
-            // titleTextColor: 全体背景（color-bg）の上に置く文字用
+            // 文字色の決定
             const titleTextColor = bgBright > 155 ? '#1a1a1a' : '#ffffff';
-            // cellTextColor: セル背景（color-cell）の中に置く文字用
             const cellTextColor = cBright > 155 ? '#1a1a1a' : '#ffffff';
-            // badgeTextColor: バッジ背景（color-badge）の中に置く文字用
             const badgeTextColor = bBright > 155 ? '#000000' : '#ffffff';
 
-            // タイトルと曜日の色（全体背景に依存）
+            // 1. タイトル色
             const titleDisplay = document.getElementById('preview-title-display');
             if (titleDisplay) titleDisplay.style.color = titleTextColor;
 
+            // 2. ヘッダー曜日色
             const headers = exportGrid.querySelectorAll('div:nth-child(-n+9)');
             headers.forEach((h, i) => {
-                if (i === 7) h.style.color = '#60a5fa'; // SAT
-                else if (i === 8) h.style.color = '#f87171'; // SUN
+                if (i === 7) h.style.color = '#60a5fa'; // SAT (青)
+                else if (i === 8) h.style.color = '#f87171'; // SUN (赤)
                 else h.style.color = titleTextColor;
             });
 
-            // 日付セルの処理（ここはセル背景に依存させるので cellTextColor で正しい）
+            // 3. 日付セル・スロットの処理
             exportGrid.querySelectorAll('.day-cell').forEach(c => {
                 c.style.backgroundColor = cellColor;
                 c.style.borderColor = cBright > 155 ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)';
 
+                // ★修正: 週末カラーを背景の明るさに応じて2色で自動切り替え
                 const dateNum = c.querySelector('.day-number-text');
                 if (dateNum) {
-                    // 土日の色は維持し、平日はセルの明るさに合わせる
-                    if (!dateNum.classList.contains('text-red-400') && !dateNum.classList.contains('text-blue-400')) {
+                    if (dateNum.classList.contains('text-red-400')) {
+                        // 日曜: 背景が明るいなら「濃い赤」、暗いなら「明るい赤」
+                        dateNum.style.color = cBright > 155 ? '#dc2626' : '#f87171';
+                    } else if (dateNum.classList.contains('text-blue-400')) {
+                        // 土曜: 背景が明るいなら「濃い青」、暗いなら「明るい青」
+                        dateNum.style.color = cBright > 155 ? '#2563eb' : '#60a5fa';
+                    } else {
+                        // 平日: 白黒自動切り替え
                         dateNum.style.color = cellTextColor;
                     }
                 }
 
+                // スロット（枠）の処理
                 c.querySelectorAll('.stack > div').forEach(slot => {
                     const userName = slot.getAttribute('data-user-assigned');
                     if (userName) {
@@ -1550,9 +1939,9 @@ function addUser() {
                         slot.style.setProperty('border-color', 'transparent', 'important');
                         slot.style.setProperty('box-shadow', '0 4px 10px 0 rgba(0, 0, 0, 0.2)', 'important');
                     } else if (slot.innerText !== '✕') {
-                        // 空き枠のボーダーと文字色
+                        // 空き枠
                         slot.style.backgroundColor = 'transparent';
-                        slot.style.color = cellTextColor; // セル内の文字なので cellTextColor
+                        slot.style.color = cellTextColor;
                         slot.style.borderWidth = '2px';
                         slot.style.borderStyle = 'solid';
 
@@ -1565,11 +1954,10 @@ function addUser() {
                 });
             });
 
-            // 【修正箇所】時間軸は全体背景の上にあるため、titleTextColor（全体背景基準）を使うべき
+            // 4. 時間軸の色
             document.querySelectorAll('.time-axis-unit').forEach(el => {
-                el.style.color = titleTextColor; // 修正: cellTextColor -> titleTextColor
+                el.style.color = titleTextColor;
                 const line = el.querySelector('.border-t');
-                // 線の色も全体背景の明るさ(bgBright)を基準にする
                 if (line) line.style.borderColor = bgBright > 155 ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.2)';
             });
         }
@@ -1655,24 +2043,24 @@ function addUser() {
 
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
-            
+
             const a = document.createElement('a');
             a.href = url;
             // ファイル名を現在時刻入りにする例: settings_20231201.json
-            const dateStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
+            const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
             a.download = `room_settings_${dateStr}.json`;
             a.click();
             URL.revokeObjectURL(url);
         }
 
-// ---------------------------------------------------------
+        // ---------------------------------------------------------
         // 1. ★追加: メンバーリストの再描画関数
         //    (これを追加しないと、読み込み後に画面が出ません)
         // ---------------------------------------------------------
         function renderUserListUI() {
             const list = document.getElementById('user-list');
             if (!list) return;
-            
+
             list.innerHTML = ''; // 現在の表示を一度クリア
 
             users.forEach(user => {
@@ -1696,7 +2084,7 @@ function addUser() {
             if (!file) return;
 
             const reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = function (e) {
                 try {
                     const data = JSON.parse(e.target.result);
                     let msg = "";
@@ -1723,7 +2111,7 @@ function addUser() {
                     renderUserListUI();     // Step 1 リスト更新
                     initStep3();            // Step 3 優先度リスト更新
                     initTimeInputs();       // 時間割フォーム更新
-                    
+
                     // カレンダーが表示されていれば更新
                     const grid = document.getElementById('calendar-grid');
                     if (grid && grid.innerHTML !== "") {
